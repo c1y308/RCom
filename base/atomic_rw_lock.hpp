@@ -7,6 +7,7 @@
 
 namespace base {
 
+/* 4 个标准动作 + 2 个标志量*/
 class AtomicRWLock {
 public:
     /* 首先定义规则 */
@@ -28,8 +29,9 @@ public:
 private:
     std::atomic<int32_t> lock_num_{0};              // 记录房间状态
     std::atomic<uint32_t> write_lock_wait_num_{0};  // 记录等待的VIP人数
-    bool write_first_{true};                          // 是否先写者
+    volatile bool write_first_{true};               // 是否先写者
 };
+
 
 
 inline void AtomicRWLock::ReadUnlock() {
