@@ -83,44 +83,47 @@ void UnboundedQueue<T>::Clear(){
 
 template<typename T>
 std::size_t UnboundedQueue<T>::Size() const{
-    return size_.load();
+    return size_.load(std::memory_order_relaxed);
 }
 
 template<typename T>
 bool UnboundedQueue<T>::Empty() const{
-    return size_.load() == 0;
+    return size_.load(std::memory_order_relaxed) == 0;
 }
 
 template<typename T>
 void UnboundedQueue<T>::Enqueue(T element){
     auto node = new Node();
     node->data = std::move(element);
-    Node *old_tail = tail_.load();
+    Node *old_tail = tail_.load(std::memory_order_relaxed);
 
-    /* 没抢到是不可以入队的，因此无其他操作 */
+    /* 没有前置判断操作，也没有尝试操作 */
     do {
-    } while(!tail_.compare_exchange_strong(old_tail, node));
+    } while(!tail_.compare_exchange_strong(old_tail, node));  // 只有一个线程可以抢到这个 tail
 
     old_tail->next = node;
     old_tail->release();
-    size_.fetch_add(1);
+    size_.fetch_add(1, std::memory_order_relaxed);
 }
 
 template<typename T>
 bool UnboundedQueue<T>::Dequeue(T *element){
-    Node *old_head = head_.load();
+    Node *old_head = head_.load(std::memory_order_relaxed);
     Node *head_next = nullptr;
 
-    do{
+    /* 有前置判断操作，也有尝试操作 */
+    while(true){
         head_next = old_head->next;
 
         if(head_next == nullptr)
             return false;
 
-        *element = std::move(head_next->data);  // 重点改动 move 语句
-    }while(!head_.compare_exchange_strong(old_head, head_next));
+        if(head_.compare_exchange_strong(old_head, head_next))  // 只有一个线程可以抢到这个 head->next
+            break;
+        *element = std::move(head_next->data);
+    }
 
-    size_.fetch_sub(1);
+    size_.fetch_sub(1, std::memory_order_relaxed);
     old_head->release();
     return true;
 }
@@ -129,12 +132,12 @@ bool UnboundedQueue<T>::Dequeue(T *element){
 
 template<typename T>
 UnboundedQueue<T>::Node::Node(){
-    ref_count.store(2);
+    ref_count.store(2, std::memory_order_relaxed);
 }
 
 template<typename T>
 void UnboundedQueue<T>::Node::release(){
-    if(ref_count.fetch_sub(1) == 1){
+    if(ref_count.fetch_sub(1, std::memory_order_relaxed) == 1){
         delete this;
     }
 }

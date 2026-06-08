@@ -61,10 +61,13 @@ private:
 
     static constexpr std::size_t CACHELINE_SIZE = 64;
 
+    /* 记录可以入队的位置 */
     alignas(CACHELINE_SIZE) std::atomic<uint64_t> enqueue_pos_ = {0};
+    /* 记录可以出队的位置 */
     alignas(CACHELINE_SIZE) std::atomic<uint64_t> dequeue_pos_ = {0};
 
-    bool init_ = false;
+    bool init_    = false;
+
     Cell *buffer_ = nullptr;
     uint64_t capacity_ = 0;
 
@@ -90,21 +93,20 @@ inline bool BoundedQueue<T>::Init(uint64_t size){
     return Init(size, strategy.release());
 }
 
-/* 分配内存/设置队列的等待策略 */
+/* 设置队列的等待策略、分配数组内存、初始化每个槽位的序列号 */
 template<typename T>
 inline bool BoundedQueue<T>::Init(uint64_t size, WaitStrategy *strategy){
     std::unique_ptr<WaitStrategy> strategy_guard(strategy);
     if(size == 0 || strategy_guard == nullptr || init_)
         return false;
-    /* 分配内存 */
+
+    /* 分配数组内存 */
     Cell *buffer = nullptr;
     try{
-        buffer = new (std::nothrow) Cell[size];
+        buffer = new Cell[size];
     }catch(...){
         return false;
     }
-    if(buffer == nullptr)
-        return false;
 
     /* 初始化序列号（每个槽位设置为空状态） */
     for(uint64_t i = 0; i < size; i++){
@@ -170,6 +172,41 @@ bool BoundedQueue<T>::waitEnqueue(T &&element){
     return false;
 }
 
+template<typename T>
+template<typename U>
+bool BoundedQueue<T>::EnqueueImpl(U &&element){
+    if(!init_)
+        return false;
+
+    /* 获取当前入队的槽位位置编号 */
+    Cell *cell = nullptr;
+    uint64_t pos = enqueue_pos_.load(std::memory_order_relaxed);
+
+    while(true){
+        cell = &buffer_[getIndex(pos)];  // 映射到对应槽位
+        uint64_t sequence = cell->sequence.load(std::memory_order_acquire);  // 获取当前槽位的序列号
+        uint64_t expected = EmptySequence(pos);  // 计算期望的空槽位序列号
+        /*---上面都是依据pos计算出来的(切出去都无所谓)---*/
+
+        if(sequence == expected){  // 看到的那个槽位是空的
+            if(enqueue_pos_.compare_exchange_weak(pos, pos + 1,  // 通过CAS操作确保只有一个线程能抢到这个槽位
+                                                  std::memory_order_relaxed,
+                                                  std::memory_order_relaxed)){
+                break;
+            }
+        }else if(sequence < expected){
+            return false;
+        }else{
+            pos = enqueue_pos_.load(std::memory_order_relaxed);
+        }
+    }
+
+    cell->data = std::forward<U>(element);
+    cell->sequence.store(FullSequence(pos), std::memory_order_release);
+    if(wait_strategy_)
+        wait_strategy_->notifyOne();
+    return true;
+}
 
 
 template<typename T>
@@ -177,16 +214,17 @@ bool BoundedQueue<T>::Dequeue(T *element){
     if(!init_ || element == nullptr)
         return false;
 
+    /* 获取当前出队的槽位位置编号 */
     Cell *cell = nullptr;
     uint64_t pos = dequeue_pos_.load(std::memory_order_relaxed);
 
     while(true){
-        cell = &buffer_[getIndex(pos)];
-        uint64_t sequence = cell->sequence.load(std::memory_order_acquire);
-        uint64_t expected = FullSequence(pos);
+        cell = &buffer_[getIndex(pos)];  // 映射到对应槽位
+        uint64_t sequence = cell->sequence.load(std::memory_order_acquire);  // 获取当前槽位的序列号
+        uint64_t expected = FullSequence(pos);  // 计算期望的满槽位序列号
 
         if(sequence == expected){
-            if(dequeue_pos_.compare_exchange_weak(pos, pos + 1,
+            if(dequeue_pos_.compare_exchange_weak(pos, pos + 1,  // 通过CAS操作确保只有一个线程能抢到这个槽位
                                                   std::memory_order_relaxed,
                                                   std::memory_order_relaxed)){
                 break;
@@ -262,39 +300,6 @@ inline uint64_t BoundedQueue<T>::FullSequence(uint64_t pos) const {
     return pos * 2 + 1;
 }
 
-template<typename T>
-template<typename U>
-bool BoundedQueue<T>::EnqueueImpl(U &&element){
-    if(!init_)
-        return false;
-
-    Cell *cell = nullptr;
-    uint64_t pos = enqueue_pos_.load(std::memory_order_relaxed);
-
-    while(true){
-        cell = &buffer_[getIndex(pos)];
-        uint64_t sequence = cell->sequence.load(std::memory_order_acquire);
-        uint64_t expected = EmptySequence(pos);
-
-        if(sequence == expected){
-            if(enqueue_pos_.compare_exchange_weak(pos, pos + 1,
-                                                  std::memory_order_relaxed,
-                                                  std::memory_order_relaxed)){
-                break;
-            }
-        }else if(sequence < expected){
-            return false;
-        }else{
-            pos = enqueue_pos_.load(std::memory_order_relaxed);
-        }
-    }
-
-    cell->data = std::forward<U>(element);
-    cell->sequence.store(FullSequence(pos), std::memory_order_release);
-    if(wait_strategy_)
-        wait_strategy_->notifyOne();
-    return true;
-}
 
 template <typename T>
 inline void BoundedQueue<T>::setWaitStrategy(WaitStrategy* strategy) {
