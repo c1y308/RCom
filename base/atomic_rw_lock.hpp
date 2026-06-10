@@ -47,7 +47,7 @@ inline void AtomicRWLock::WriteLock() {
     // 先在写者排号机上取个号
     write_lock_wait_num_.fetch_add(1, std::memory_order_relaxed);
 
-    // 只有房间为空 (0) 时，才能通过CAS进行抢进入资格！
+    // 不需要满足其他条件才可以进行抢进入资格
     int32_t expected = RW_LOCK_FREE;
     uint32_t retry_times = 0;
     // 同一时刻只有一个写者抢到进入资格(成功则将房间状态置为 -1)

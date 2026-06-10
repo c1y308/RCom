@@ -118,9 +118,9 @@ bool UnboundedQueue<T>::Dequeue(T *element){
         if(head_next == nullptr)
             return false;
 
+        *element = std::move(head_next->data);
         if(head_.compare_exchange_strong(old_head, head_next))  // 只有一个线程可以抢到这个 head->next
             break;
-        *element = std::move(head_next->data);
     }
 
     size_.fetch_sub(1, std::memory_order_relaxed);

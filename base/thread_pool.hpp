@@ -1,41 +1,44 @@
-#ifndef BASE_THREAD_POOL_H
-#define BASE_THREAD_POOL_H
+#ifndef BASE_THREAD_POOL_HPP
+#define BASE_THREAD_POOL_HPP
 
 #include <atomic>
-#include <cstddef>
-#include <future>
+#include <cstddef>  
 #include <vector>
-#include "bounded_queue.hpp"
 #include <thread>
+#include <mutex>
+#include "bounded_queue.hpp"
+#include "wait_strategy.hpp"
 #include <functional>
-namespace base{
+#include <future>
+namespace base {
 
-class ThreadPool{
+
+class ThreadPool {
 public:
-    explicit ThreadPool(std::size_t num_threads, std::size_t max_task_num = 1000);
+    explicit ThreadPool(std::size_t thread_num, std::size_t max_task_num = 1000);
     ~ThreadPool();
 
-    template<typename Func, typename... Args>
-    auto Enqueue(Func&& func, Args&&... args) -> std::future<typename std::result_of<Func(Args...)>::type>;
+    template<typename F, typename... Args>
+    auto Enqueue(F&& func, Args&&... args) -> std::future<std::invoke_result_t<F, Args...>>;
 
 private:
     std::vector<std::thread> workers_;
     BoundedQueue<std::function<void()>> task_queue_;
-    std::atomic<bool> stop_;
+    std::atomic_bool is_running_;
+    std::mutex enqueue_mutex_;
 };
 
-/* 构造函数入参为：1. 线程数 2. 最大任务数 */
-inline ThreadPool::ThreadPool(std::size_t num_threads, std::size_t max_task_num) : stop_(false) {
-    if(!task_queue_.Init(max_task_num, new BlockWaitStrategy())) {
-        throw std::runtime_error("Failed to initialize task queue");
+inline ThreadPool::ThreadPool(std::size_t threads, std::size_t max_task_num) : is_running_(true){
+    if(!task_queue_.Init(max_task_num, new BlockWaitStrategy()))
+    {
+        throw std::runtime_error("ThreadPool Init failed");
     }
 
-    workers_.reserve(num_threads);
-    for (std::size_t i = 0; i < num_threads; ++i) {
-        workers_.emplace_back([this] {
-            while (!stop_) {
+    for(std::size_t i = 0; i < threads; ++i){
+        workers_.emplace_back([this](){
+            while(is_running_.load(std::memory_order_acquire)){
                 std::function<void()> task;
-                if (task_queue_.waitDequeue(&task)) {
+                if(task_queue_.waitDequeue(&task)){
                     task();
                 }
             }
@@ -43,38 +46,54 @@ inline ThreadPool::ThreadPool(std::size_t num_threads, std::size_t max_task_num)
     }
 }
 
-template<typename Func, typename... Args>
-auto ThreadPool::Enqueue(Func&& func, Args&&... args) -> std::future<typename std::result_of<Func(Args...)>::type> {
-    using return_type = typename std::result_of<Func(Args...)>::type;
-
-    auto task = std::make_shared<std::packaged_task<return_type()>>(
-        std::bind(std::forward<Func>(func), std::forward<Args>(args)...)
-    );
-    std::future<return_type> future = task->get_future();
-
-    if (stop_) {
-        return std::future<return_type>(); // Return an empty future if the pool is stopped
-    }
-    task_queue_.Enqueue([task]() { (*task)(); });
-    return future;
-}
-
-/* 唤醒线程池里的所有线程，然后等待所有线程结束，释放资源 */
-inline ThreadPool::~ThreadPool() {
-    if(stop_.exchange(true)) {
-        return; // Already stopped
+inline ThreadPool::~ThreadPool(){
+    {
+        std::lock_guard<std::mutex> lock(enqueue_mutex_);
+        if(!is_running_.exchange(false))
+            return;
     }
 
     task_queue_.breakAllWait();
 
-    for (std::thread &worker : workers_) {
-        if (worker.joinable()) {
+    for(auto& worker : workers_){
+        if(worker.joinable()){
             worker.join();
         }
+    }
+
+    // 排空队列中剩余的任务，避免静默丢弃
+    std::function<void()> task;
+    while(task_queue_.Dequeue(&task)){
+        task();
     }
 }
 
 
-}  // namespace base
+template<typename F, typename... Args>
+auto ThreadPool::Enqueue(F&& func, Args&&... args) -> std::future<std::invoke_result_t<F, Args...>>
+{
+    using return_type = std::invoke_result_t<F, Args...>;
 
-#endif // BASE_THREAD_POOL_H
+    auto task = std::make_shared<std::packaged_task<return_type()>>(
+        std::bind(std::forward<F>(func), std::forward<Args>(args)...)
+    );
+
+    std::future<return_type> res = task->get_future();
+    
+    {
+        std::lock_guard<std::mutex> lock(enqueue_mutex_);
+        if(!is_running_.load(std::memory_order_relaxed)){
+            std::promise<return_type> promise;
+            promise.set_exception(std::make_exception_ptr(
+                std::runtime_error("ThreadPool is stopped")));
+            return promise.get_future();
+        }
+        task_queue_.Enqueue([task](){ (*task)(); });
+    }
+
+    return res;
+}
+
+}
+
+#endif

@@ -118,7 +118,7 @@ inline bool BoundedQueue<T>::Init(uint64_t size, WaitStrategy *strategy){
     enqueue_pos_.store(0, std::memory_order_relaxed);
     dequeue_pos_.store(0, std::memory_order_relaxed);
     wait_strategy_ = std::move(strategy_guard);
-    break_all_wait_.store(false, std::memory_order_release);
+    break_all_wait_.store(false, std::memory_order_relaxed);
     init_ = true;
     return true;
 }
