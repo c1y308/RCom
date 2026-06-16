@@ -4,6 +4,7 @@
 
 /* 创建一个名为 name 的模板结构体，用于判断 T 中是否含有 func 函数 */
 #define DEFINE_TYPE_TRAIT(name, func)                           \
+                                                                \
     template<typename T>                                        \
     struct name                                                 \
     {                                                           \
