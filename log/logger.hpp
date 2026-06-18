@@ -49,12 +49,16 @@ private:
 
 private:
     string filename_;
+
     ofstream fout_;
     std::ostringstream stream_;
+
     int max_;
     int len_;
     int level_;
+
     bool console_;
+    
     static const char* s_level_[LOG_COUNT];
 };
 

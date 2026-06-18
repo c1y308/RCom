@@ -50,11 +50,13 @@ void Logger::log(LogLevel level, const char *file, int line, const char *format,
         return;
     }
 
-
     // 构建完整的日志信息
     std::ostringstream log_stream;
+    
+    /* 获取时间，并转化为字符数组 */
     time_t now = time(nullptr);
     struct tm *local_time = localtime(&now);
+    /* 是否可以改为 18 */
     char time_buffer[32];
     memset(time_buffer, 0, sizeof(time_buffer));
     strftime(time_buffer, sizeof(time_buffer), "%Y-%m-%d %H:%M:%S", local_time);
@@ -66,7 +68,8 @@ void Logger::log(LogLevel level, const char *file, int line, const char *format,
         char *header = new char[len + 1];
         snprintf(header, len + 1, fmt, time_buffer, s_level_[level], file, line);
         header[len] = 0;  // 确保字符串以null结尾
-        log_stream << header;
+
+        log_stream << header;   // 构建好的时间的字符串数组输出到 log_stream
         delete[] header;
         len_ += len;
     }
@@ -81,17 +84,20 @@ void Logger::log(LogLevel level, const char *file, int line, const char *format,
         vsnprintf(message, len + 1, format, args_ptr);
         va_end(args_ptr);
         message[len] = 0;  // 确保字符串以null结尾
-        log_stream << message;
+        log_stream << message;  // 把日志信息也输出到字符串流
         delete[] message;
         len_ += len;
     }
 
     log_stream << "\n";
     const string &log_str = log_stream.str();
+
+    /* 如果需要输出到控制台，则同时在控制台中进行输出 */
     if(console_){
         std::cout << log_str << std::endl;
     }
 
+    /* 输出进绑定的文件 */
     fout_ << log_str;
     // 刷新输出缓冲区，确保日志信息及时写入文件
     fout_.flush();
