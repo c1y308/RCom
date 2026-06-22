@@ -23,7 +23,7 @@ public:
     }
 
 
-    // 注意：这里我们假设m_file和m_line指向的字符串在LogStream对象生命周期内始终有效
+    // 注意：这里我们假设 m_file和 m_line 指向的字符串在LogStream对象生命周期内始终有效
     // 并且拷贝构造函数复制了other的ostringstream的内容到新对象的ostringstream中
     LogStream(const LogStream &other)
          : level_(other.level_), file_(other.file_), line_(other.line_), stream_(other.stream_.str()) {
