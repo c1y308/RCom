@@ -16,7 +16,7 @@ namespace logger{
 class LogStream;
 
 class Logger{
-    DECLARE_SINGLETON(Logger);
+    DECLARE_SINGLETON(Logger)
 public:
     enum LogLevel{
         LOG_DEBUG = 0,
