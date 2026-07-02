@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.14)
 # 定义项目名称、版本和使用的语言。
 project(RCom VERSION 1.0.0 LANGUAGES CXX)
 
+# 给 clangd / IDE 生成准确的编译数据库。
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 # 统一设置整个项目的 C++ 标准。
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -32,7 +35,8 @@ add_subdirectory(base)
 add_subdirectory(common)
 add_subdirectory(log)
 add_subdirectory(time)
-
+add_subdirectory(serialize)
+add_subdirectory(transport)
 # 按需构建 GoogleTest 测试程序。
 if(BUILD_GTESTS)
     add_subdirectory(test)
