@@ -28,8 +28,7 @@ DataStream::DataStream(const char* data, std::size_t size)
 
     buf_.clear();  //清空vector
     reserve(size);
-    write(data,size);
-
+    write(data, size);
 }
 
 /* 判断机器大小端 */
@@ -279,7 +278,6 @@ void DataStream::write(const Serializable& value) {
 void DataStream::write_args() {}
 
 
-
 bool DataStream::read(char* data, int len) {
     if (len < 0 || data == nullptr) {
         return false;
@@ -306,7 +304,7 @@ bool DataStream::read(bool & value)
 }
 
 bool DataStream::read(char& value) {
-    if (buf_[pos_] != DataType::BOOL)
+    if (buf_[pos_] != DataType::CHAR)  // 此次有疑问？
     {
         return false;
     }

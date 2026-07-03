@@ -12,6 +12,7 @@ public:
     virtual bool unserialize(DataStream& stream) = 0;
 };
 
+
 #define SERIALIZE(...)                              \
                                                     \
     void serialize(DataStream & stream) const       \
