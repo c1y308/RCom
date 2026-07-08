@@ -1,6 +1,6 @@
 #ifndef LOG_LOGGER_HPP
 #define LOG_LOGGER_HPP
-#include "../common/macros.hpp"
+#include "../common/declare_singleton.hpp"
 
 #include <string>
 using std::string;

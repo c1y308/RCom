@@ -1,6 +1,6 @@
 #ifndef COMMON_MACROS_HPP
 #define COMMON_MACROS_HPP
-#include "../base/macros.hpp"
+#include "../base/func_trait.hpp"
 #include <type_traits>
 #include <mutex>
 DEFINE_TYPE_TRAIT(has_shutdown, shutdown);

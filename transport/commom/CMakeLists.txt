@@ -7,6 +7,9 @@ target_include_directories(RCom_transport_commom PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_link_libraries(RCom_transport_commom PRIVATE
+target_link_libraries(RCom_transport_commom
+PUBLIC
+    RCom_config
+PRIVATE
     RCom_common
 )

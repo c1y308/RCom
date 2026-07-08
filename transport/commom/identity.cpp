@@ -1,7 +1,7 @@
 #include "identity.hpp"
-#include "../../common/str_hash.hpp"
 #include<uuid/uuid.h>
 #include <cstring>
+#include <functional>
 namespace transport{
 
 /* 构造函数 */
@@ -40,7 +40,7 @@ bool Identity::operator==(const Identity &other) const{
 
 /* 更新哈希值 */
 void Identity::update_hash_value(){
-    hash_value_ = common::str_hash(std::string(data_, ID_SIZE));
+    hash_value_ = std::hash<std::string>{}(std::string(data_, ID_SIZE));
 }
 
 /* 获取原始哈希值 */
@@ -53,7 +53,7 @@ std::string Identity::to_string() const { return std::to_string(hash_value_); }
 /* 设置标识符 */
 void Identity::set_data(const char* data) {
     if (data == nullptr) {
-    return;
+        return;
     }
     std::memcpy(data_, data, sizeof(data_));
     update_hash_value();

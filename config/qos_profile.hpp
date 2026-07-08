@@ -1,7 +1,7 @@
 #ifndef CMW_CONFIG_QOS_PROFILE_H_
 #define CMW_CONFIG_QOS_PROFILE_H_
 
-#include "../serialize/serializable.hpp"
+#include "../serialize/data_stream.hpp"
 #include <cstdint>
 namespace config {
 

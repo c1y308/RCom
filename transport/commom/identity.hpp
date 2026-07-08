@@ -27,7 +27,7 @@ public:
 
 private:
     void update_hash_value();
-    char data_[ID_SIZE];   // 标识符
+    char data_[ID_SIZE];   // 标识符（uuid生成）
     uint64_t hash_value_;  // 哈希值
 
 };

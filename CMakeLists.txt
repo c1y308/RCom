@@ -19,7 +19,9 @@ endif()
 # 可选的运行时检查工具，默认关闭，需要时通过 -DENABLE_ASAN=ON 打开。
 option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
 option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
-option(BUILD_GTESTS "Build GoogleTest test programs" ON)
+option(BUILD_GTESTS "Build GoogleTest test programs" OFF)
+
+find_package(nlohmann_json REQUIRED)
 
 if(ENABLE_ASAN)
     add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
@@ -36,6 +38,7 @@ add_subdirectory(common)
 add_subdirectory(log)
 add_subdirectory(time)
 add_subdirectory(serialize)
+add_subdirectory(config)
 add_subdirectory(transport)
 # 按需构建 GoogleTest 测试程序。
 if(BUILD_GTESTS)
