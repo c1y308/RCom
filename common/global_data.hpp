@@ -11,25 +11,40 @@ class GlobalData{
 public:
     ~GlobalData();
 
-    //获取运行机器的配置信息
+    // 获取运行机器的配置信息
     const std::string& host_ip() const;
     const std::string& host_name() const;
 
-    //获取当前进程的信息
+    // 获取当前进程的信息
     int process_id() const; 
     const std::string& process_group() const;
     void set_process_group(const std::string& group);
 
-    //获取调度策略信息
+    // 获取调度策略信息
     const std::string& sched_name() const;
 
+    // 获取当前 config
     const config::MainConfig& config() const;
 
     void set_component_nums(const int component_nums);
     int component_nums() const;
 
+    //注册channel，返回 channel 的 id
+    static uint64_t register_channel(const std::string& channel);
+
+    std::string get_channel_by_id(uint64_t id);
+
+    //注册node，返回 node 的 id
+    static uint64_t register_node(const std::string& node_name);
+
+    std::string get_task_name_by_id(uint64_t id);
+
+    uint64_t register_task_name(const std::string& task_name);
 private:
+
     void init_host_info();
+
+    //  从配置文件中读取配置信息
     bool init_config();
 
 private:

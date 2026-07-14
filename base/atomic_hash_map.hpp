@@ -14,36 +14,36 @@ public:
 
     ~AtomicHashMap() = default;
 
-    bool Has(Key key) const{
+    bool has(Key key) const{
         uint64_t index = key & mode_num_;
         return buckets_[index].has(key);
     }
 
-    bool Get(Key key, Value **value_ptr) const{
+    bool get(Key key, Value **value_ptr) const{
         uint64_t index = key & mode_num_;
-        return buckets_[index].Get(key, value_ptr);
+        return buckets_[index].get(key, value_ptr);
     }
 
-    bool Get(Key key, Value *value) const{
+    bool get(Key key, Value *value) const{
         uint64_t index = key & mode_num_;
         Value *value_ptr = nullptr;
-        bool res = buckets_[index].Get(key, &value_ptr);
+        bool res = buckets_[index].get(key, &value_ptr);
         if(res)
             *value = *value_ptr;
         return res;
     }
 
-    void Set(Key key){
+    void set(Key key){
         uint64_t index = key & mode_num_;
         buckets_[index].Insert(key);
     }
 
-    void Set(Key key, const Value &value){
+    void set(Key key, const Value &value){
         uint64_t index = key & mode_num_;
         buckets_[index].Insert(key, value);
     }
 
-    void Set(Key key, Value &&value){
+    void set(Key key, Value &&value){
         uint64_t index = key & mode_num_;
         buckets_[index].Insert(key, std::forward<Value>(value));
     }
@@ -254,7 +254,7 @@ private:
             }   
         }
 
-        bool Get(Key key, Value **value_ptr) const{
+        bool get(Key key, Value **value_ptr) const{
             Entry *prev = nullptr;
             Entry *target = nullptr;
             if(Find(key, &prev, &target)){
