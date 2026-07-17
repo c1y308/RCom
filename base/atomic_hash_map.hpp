@@ -1,5 +1,12 @@
 #ifndef ATOMIC_HASH_MAP_H
 #define ATOMIC_HASH_MAP_H
+
+/**
+ * @file atomic_hash_map.hpp
+ * @author c1y308
+ * @brief 提供基于原子链表桶的固定容量哈希表模板。
+ */
+
 #include <cstdint>
 #include <atomic>
 namespace base {

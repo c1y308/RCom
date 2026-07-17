@@ -1,6 +1,12 @@
 #ifndef BASE_UNBOUNDED_QUEUE_H
 #define BASE_UNBOUNDED_QUEUE_H
 
+/**
+ * @file unbounded_queue.hpp
+ * @author c1y308
+ * @brief 提供基于链表节点的无界并发队列模板。
+ */
+
 #include <atomic>
 #include <cstddef>
 #include <cstdint>

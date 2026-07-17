@@ -1,6 +1,12 @@
 #ifndef BASE_THREAD_POOL_HPP
 #define BASE_THREAD_POOL_HPP
 
+/**
+ * @file thread_pool.hpp
+ * @author c1y308
+ * @brief 提供基于有界队列的线程池实现。
+ */
+
 #include <atomic>
 #include <cstddef>  
 #include <vector>

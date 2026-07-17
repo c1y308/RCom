@@ -26,18 +26,18 @@ bool WaitUntil(Predicate predicate,
 
 TEST(AtomicRWLockTest, ReadLockAllowsMultipleReaders) {
     base::AtomicRWLock lock;
-    lock.ReadLock();
+    lock.read__lock();
 
     std::atomic<bool> reader_acquired{false};
     std::atomic<bool> release_reader{false};
 
     std::thread reader([&] {
-        lock.ReadLock();
+        lock.read__lock();
         reader_acquired.store(true, std::memory_order_release);
         while(!release_reader.load(std::memory_order_acquire)){
             std::this_thread::yield();
         }
-        lock.ReadUnlock();
+        lock.read__unlock();
     });
 
     EXPECT_TRUE(WaitUntil([&] {
@@ -46,29 +46,29 @@ TEST(AtomicRWLockTest, ReadLockAllowsMultipleReaders) {
 
     release_reader.store(true, std::memory_order_release);
     reader.join();
-    lock.ReadUnlock();
+    lock.read__unlock();
 }
 
 TEST(AtomicRWLockTest, WriteLockWaitsForReaders) {
     base::AtomicRWLock lock;
-    lock.ReadLock();
+    lock.read__lock();
 
     std::atomic<bool> writer_acquired{false};
     std::atomic<bool> release_writer{false};
 
     std::thread writer([&] {
-        lock.WriteLock();
+        lock.write__lock();
         writer_acquired.store(true, std::memory_order_release);
         while(!release_writer.load(std::memory_order_acquire)){
             std::this_thread::yield();
         }
-        lock.WriteUnlock();
+        lock.write__unlock();
     });
 
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
     EXPECT_FALSE(writer_acquired.load(std::memory_order_acquire));
 
-    lock.ReadUnlock();
+    lock.read__unlock();
     EXPECT_TRUE(WaitUntil([&] {
         return writer_acquired.load(std::memory_order_acquire);
     }));
@@ -79,20 +79,20 @@ TEST(AtomicRWLockTest, WriteLockWaitsForReaders) {
 
 TEST(AtomicRWLockTest, ReadLockWaitsForWriter) {
     base::AtomicRWLock lock;
-    lock.WriteLock();
+    lock.write__lock();
 
     std::atomic<bool> reader_acquired{false};
 
     std::thread reader([&] {
-        lock.ReadLock();
+        lock.read__lock();
         reader_acquired.store(true, std::memory_order_release);
-        lock.ReadUnlock();
+        lock.read__unlock();
     });
 
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
     EXPECT_FALSE(reader_acquired.load(std::memory_order_acquire));
 
-    lock.WriteUnlock();
+    lock.write__unlock();
     EXPECT_TRUE(WaitUntil([&] {
         return reader_acquired.load(std::memory_order_acquire);
     }));
@@ -101,7 +101,7 @@ TEST(AtomicRWLockTest, ReadLockWaitsForWriter) {
 
 TEST(AtomicRWLockTest, WriteFirstBlocksNewReadersBehindWaitingWriter) {
     base::AtomicRWLock lock(true);
-    lock.ReadLock();
+    lock.read__lock();
 
     std::atomic<bool> writer_started{false};
     std::atomic<bool> writer_acquired{false};
@@ -109,12 +109,12 @@ TEST(AtomicRWLockTest, WriteFirstBlocksNewReadersBehindWaitingWriter) {
 
     std::thread writer([&] {
         writer_started.store(true, std::memory_order_release);
-        lock.WriteLock();
+        lock.write__lock();
         writer_acquired.store(true, std::memory_order_release);
         while(!release_writer.load(std::memory_order_acquire)){
             std::this_thread::yield();
         }
-        lock.WriteUnlock();
+        lock.write__unlock();
     });
 
     ASSERT_TRUE(WaitUntil([&] {
@@ -124,15 +124,15 @@ TEST(AtomicRWLockTest, WriteFirstBlocksNewReadersBehindWaitingWriter) {
 
     std::atomic<bool> reader_acquired{false};
     std::thread reader([&] {
-        lock.ReadLock();
+        lock.read__lock();
         reader_acquired.store(true, std::memory_order_release);
-        lock.ReadUnlock();
+        lock.read__unlock();
     });
 
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
     EXPECT_FALSE(reader_acquired.load(std::memory_order_acquire));
 
-    lock.ReadUnlock();
+    lock.read__unlock();
     EXPECT_TRUE(WaitUntil([&] {
         return writer_acquired.load(std::memory_order_acquire);
     }));
@@ -149,7 +149,7 @@ TEST(AtomicRWLockTest, WriteFirstBlocksNewReadersBehindWaitingWriter) {
 
 TEST(AtomicRWLockTest, ReaderFirstAllowsNewReadersWhileWriterWaits) {
     base::AtomicRWLock lock(false);
-    lock.ReadLock();
+    lock.read__lock();
 
     std::atomic<bool> writer_started{false};
     std::atomic<bool> writer_acquired{false};
@@ -157,12 +157,12 @@ TEST(AtomicRWLockTest, ReaderFirstAllowsNewReadersWhileWriterWaits) {
 
     std::thread writer([&] {
         writer_started.store(true, std::memory_order_release);
-        lock.WriteLock();
+        lock.write__lock();
         writer_acquired.store(true, std::memory_order_release);
         while(!release_writer.load(std::memory_order_acquire)){
             std::this_thread::yield();
         }
-        lock.WriteUnlock();
+        lock.write__unlock();
     });
 
     ASSERT_TRUE(WaitUntil([&] {
@@ -172,9 +172,9 @@ TEST(AtomicRWLockTest, ReaderFirstAllowsNewReadersWhileWriterWaits) {
 
     std::atomic<bool> reader_acquired{false};
     std::thread reader([&] {
-        lock.ReadLock();
+        lock.read__lock();
         reader_acquired.store(true, std::memory_order_release);
-        lock.ReadUnlock();
+        lock.read__unlock();
     });
 
     EXPECT_TRUE(WaitUntil([&] {
@@ -183,7 +183,7 @@ TEST(AtomicRWLockTest, ReaderFirstAllowsNewReadersWhileWriterWaits) {
     EXPECT_FALSE(writer_acquired.load(std::memory_order_acquire));
 
     reader.join();
-    lock.ReadUnlock();
+    lock.read__unlock();
 
     EXPECT_TRUE(WaitUntil([&] {
         return writer_acquired.load(std::memory_order_acquire);
@@ -207,7 +207,7 @@ TEST(AtomicRWLockStressTest, ReadersAndWritersDoNotOverlapIncorrectly) {
     for(int i = 0; i < kReaderCount; ++i){
         threads.emplace_back([&] {
             for(int iteration = 0; iteration < kIterations; ++iteration){
-                lock.ReadLock();
+                lock.read__lock();
                 if(active_writers.load() != 0){
                     violations.fetch_add(1);
                 }
@@ -217,7 +217,7 @@ TEST(AtomicRWLockStressTest, ReadersAndWritersDoNotOverlapIncorrectly) {
                     violations.fetch_add(1);
                 }
                 active_readers.fetch_sub(1);
-                lock.ReadUnlock();
+                lock.read__unlock();
             }
         });
     }
@@ -225,14 +225,14 @@ TEST(AtomicRWLockStressTest, ReadersAndWritersDoNotOverlapIncorrectly) {
     for(int i = 0; i < kWriterCount; ++i){
         threads.emplace_back([&] {
             for(int iteration = 0; iteration < kIterations; ++iteration){
-                lock.WriteLock();
+                lock.write__lock();
                 if(active_writers.fetch_add(1) != 0 || active_readers.load() != 0){
                     violations.fetch_add(1);
                 }
                 std::this_thread::yield();
                 active_writers.fetch_sub(1);
                 writes.fetch_add(1);
-                lock.WriteUnlock();
+                lock.write__unlock();
             }
         });
     }

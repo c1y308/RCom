@@ -1,6 +1,12 @@
 #ifndef BASE_WAIT_STRATEGY_H
 #define BASE_WAIT_STRATEGY_H
 
+/**
+ * @file wait_strategy.hpp
+ * @author c1y308
+ * @brief 提供队列等待策略接口及自旋、阻塞、超时和睡眠策略实现。
+ */
+
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>

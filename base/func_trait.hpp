@@ -1,6 +1,12 @@
 #ifndef BASE_MACROS_H
 #define BASE_MACROS_H
 
+/**
+ * @file func_trait.hpp
+ * @author c1y308
+ * @brief 提供用于检测类型成员函数存在性的模板宏。
+ */
+
 
 /* 创建一个名为 name 的模板结构体，用于判断 T 中是否含有 func 函数 */
 #define DEFINE_TYPE_TRAIT(name, func)                           \

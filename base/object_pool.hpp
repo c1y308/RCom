@@ -1,5 +1,12 @@
 #ifndef OBJECT_POOL_HPP
 #define OBJECT_POOL_HPP
+
+/**
+ * @file object_pool.hpp
+ * @author c1y308
+ * @brief 提供固定数量对象的内存池模板。
+ */
+
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>

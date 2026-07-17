@@ -1,5 +1,12 @@
 #ifndef BASE_BOUNDED_QUEUE_H
 #define BASE_BOUNDED_QUEUE_H
+
+/**
+ * @file bounded_queue.hpp
+ * @author c1y308
+ * @brief 提供固定容量的并发队列模板及等待策略接入。
+ */
+
 #include <atomic>
 #include <cstddef>
 #include <cstdint>

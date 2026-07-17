@@ -1,3 +1,7 @@
+# @file CMakeLists.txt
+# @author c1y308
+# @brief 定义 base 模块的接口库和头文件包含路径。
+
 # base 目录目前都是头文件模板/内联实现，因此使用 INTERFACE 库。
 add_library(RCom_base INTERFACE)
 

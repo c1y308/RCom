@@ -1,6 +1,12 @@
 #ifndef BASE_ATOMIC_RW_LOCK_H
 #define BASE_ATOMIC_RW_LOCK_H
 
+/**
+ * @file atomic_rw_lock.hpp
+ * @author c1y308
+ * @brief 提供基于原子计数的读写锁实现。
+ */
+
 #include <atomic>
 #include <thread>
 #include <cstdint>
@@ -20,11 +26,11 @@ public:
     ~AtomicRWLock() = default;
 
     /* 解锁永远比加锁简单，不需要自旋，不需要CAS，闭眼改房间状态就行 */
-    void ReadUnlock();
-    void WriteUnlock();
+    void read__unlock();
+    void write__unlock();
 
-    void WriteLock();
-    void ReadLock();
+    void write__lock();
+    void read__lock();
 
 private:
     std::atomic<int32_t> lock_num_{0};              // 房间状态(记录读者人数，写者占据为 -1)
@@ -34,16 +40,16 @@ private:
 
 
 
-inline void AtomicRWLock::ReadUnlock() {
+inline void AtomicRWLock::read__unlock() {
     lock_num_.fetch_sub(1, std::memory_order_release);
 }
 
-inline void AtomicRWLock::WriteUnlock() {
+inline void AtomicRWLock::write__unlock() {
     lock_num_.fetch_add(1, std::memory_order_release); // 写者占据是 -1
 }
 
 /* 写者加锁 */
-inline void AtomicRWLock::WriteLock() {
+inline void AtomicRWLock::write__lock() {
     // 先在写者排号机上取个号
     write_lock_wait_num_.fetch_add(1, std::memory_order_relaxed);
 
@@ -67,7 +73,7 @@ inline void AtomicRWLock::WriteLock() {
     write_lock_wait_num_.fetch_sub(1, std::memory_order_relaxed);
 }
 
-inline void AtomicRWLock::ReadLock() {
+inline void AtomicRWLock::read__lock() {
     uint32_t retry_times = 0;
 
     if (write_first_) {
