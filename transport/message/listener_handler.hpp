@@ -72,8 +72,8 @@ private:
 
 template <typename MessageT>
 void ListenerHandler<MessageT>::Connect(uint64_t self_id, const Listener& listener){
-    auto connection = signal_.Connect(listener);//为signal_连接一个槽函数
-    if(!connection.IsConnected())
+    auto connection = signal_.connect(listener);//为signal_连接一个槽函数
+    if(!connection.is_connected())
     {
         return;
     }
@@ -94,8 +94,8 @@ void ListenerHandler<MessageT>::Connect(uint64_t self_id, uint64_t oppo_id, cons
         signals_[oppo_id] = std::make_shared<MessageSignal>();
     }
     //为id名为oppo_id的信号添加槽listener
-    auto connection =signals_[oppo_id]->Connect(listener);
-    if(!connection.IsConnected()){
+    auto connection =signals_[oppo_id]->connect(listener);
+    if(!connection.is_connected()){
         std::cout << oppo_id << " " << self_id << " connect failed!" << std::endl;
     }
 
@@ -116,7 +116,7 @@ WriteLockGuard<AtomicRWLock> lock(rw_lock_);
     return;
   }
 
-  signal_conns_[self_id].Disconnect();
+  signal_conns_[self_id].disconnect();
   signal_conns_.erase(self_id);
 }
 
@@ -132,7 +132,7 @@ void ListenerHandler<MessageT>::Disconnect(uint64_t self_id, uint64_t oppo_id){
     return;
   }
 
-  signals_conns_[oppo_id][self_id].Disconnect();
+  signals_conns_[oppo_id][self_id].disconnect();
   signals_conns_[oppo_id].erase(self_id);
 
 
