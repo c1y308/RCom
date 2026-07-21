@@ -2,12 +2,17 @@
 #define __MESSAGE_LISTENER_HANDLER_HPP__
 
 #include "atomic_rw_lock.hpp"
+#include "rw_lock_guard.hpp"
 #include "message_info.hpp"
+#include "signal.hpp"
+#include "log.hpp"
 #include <memory>
 #include <unordered_map>
+#include <functional>
 namespace transport{
 
 using base::AtomicRWLock;    
+
 
 class ListenerHandlerBase{
 public:
@@ -15,7 +20,7 @@ public:
     virtual ~ListenerHandlerBase() {}
 
     virtual void disconnect(uint64_t self_id) = 0;
-    virtual void disconnect(uint64_t slef_id, uint64_t oppo_id) = 0;
+    virtual void disconnect(uint64_t self_id, uint64_t oppo_id) = 0;
    // inline bool IsRawMessage() const { return is_raw_message_; }
     virtual void run_from_string(const std::string& str, const MessageInfo& msg_info) = 0;
 protected:
@@ -28,24 +33,23 @@ class ListenerHandler : public ListenerHandlerBase{
 public:
     using Message = std::shared_ptr<MessageT>;  //一个MessageT的指针
 
-    using MessageSignal = base::Signal<const Message&, const MessageInfo&>; //监听MessageT的信号
+    using MessageSignal = base::Signal<const Message&, const MessageInfo&>; //监听 MessageT 的信号
+    using Listener = std::function<void(const Message&, const MessageInfo&)>; //回调函数 Listener 的定义
+    using MessageConnection = base::Connection<const Message&, const MessageInfo&>;  //MessageT连接关系
 
-    using Listener = std::function<void(const Message&, const MessageInfo&)>; //回调函数Listener的定义
-    using MessageConnection = 
-            base::Connection<const Message&, const MessageInfo&>;  //MessageT连接关系
     using ConnectionMap = std::unordered_map<uint64_t, MessageConnection>;
 
     ListenerHandler() {}
     virtual ~ListenerHandler() {}
 
-    void Connect(uint64_t self_id, const Listener& listener);
-    void Connect(uint64_t self_id, uint64_t oppo_id, const Listener& listener);
+    void connect(uint64_t self_id, const Listener& listener);
+    void connect(uint64_t self_id, uint64_t oppo_id, const Listener& listener);
 
-    void Disconnect(uint64_t self_id) override;
-    void Disconnect(uint64_t self_id, uint64_t oppo_id) override;
+    void disconnect(uint64_t self_id) override;
+    void disconnect(uint64_t self_id, uint64_t oppo_id) override;
 
-    void Run(const Message& msg, const MessageInfo& msg_info);
-    void RunFromString(const std::string& str,
+    void run(const Message& msg, const MessageInfo& msg_info);
+    void run_from_string(const std::string& str,
                      const MessageInfo& msg_info) override;
 
 private:
@@ -71,7 +75,7 @@ private:
 };
 
 template <typename MessageT>
-void ListenerHandler<MessageT>::Connect(uint64_t self_id, const Listener& listener){
+void ListenerHandler<MessageT>::connect(uint64_t self_id, const Listener& listener){
     auto connection = signal_.connect(listener);//为signal_连接一个槽函数
     if(!connection.is_connected())
     {
@@ -79,15 +83,15 @@ void ListenerHandler<MessageT>::Connect(uint64_t self_id, const Listener& listen
     }
 
     //加锁
-    WriteLockGuard<AtomicRWLock> lock(rw_lock_);
+    base::WriteLockGuard<AtomicRWLock> lock(rw_lock_);
     //每个实体的id是唯一的,同一进程下的多个receiver有可能监听同一channel，但是他们的id是唯一的
     signal_conns_[self_id] = connection;
 }
 
 template <typename MessageT>
-void ListenerHandler<MessageT>::Connect(uint64_t self_id, uint64_t oppo_id, const Listener& listener){
+void ListenerHandler<MessageT>::connect(uint64_t self_id, uint64_t oppo_id, const Listener& listener){
 
-    WriteLockGuard<AtomicRWLock> lock(rw_lock_);
+    base::WriteLockGuard<AtomicRWLock> lock(rw_lock_);
     if(signals_.find(oppo_id) == signals_.end())
     {
         //新建一个MessageSignal
@@ -110,43 +114,43 @@ void ListenerHandler<MessageT>::Connect(uint64_t self_id, uint64_t oppo_id, cons
 }
 
 template <typename MessageT>
-void ListenerHandler<MessageT>::Disconnect(uint64_t self_id){
-WriteLockGuard<AtomicRWLock> lock(rw_lock_);
-  if (signal_conns_.find(self_id) == signal_conns_.end()) {
-    return;
-  }
+void ListenerHandler<MessageT>::disconnect(uint64_t self_id){
+    base::WriteLockGuard<AtomicRWLock> lock(rw_lock_);
+    if (signal_conns_.find(self_id) == signal_conns_.end()) {
+        return;
+    }
 
-  signal_conns_[self_id].disconnect();
-  signal_conns_.erase(self_id);
+    signal_conns_[self_id].disconnect();
+    signal_conns_.erase(self_id);
 }
 
 template <typename MessageT>
-void ListenerHandler<MessageT>::Disconnect(uint64_t self_id, uint64_t oppo_id){
+void ListenerHandler<MessageT>::disconnect(uint64_t self_id, uint64_t oppo_id){
  
-  WriteLockGuard<AtomicRWLock> lock(rw_lock_);
-  if (signals_conns_.find(oppo_id) == signals_conns_.end()) {
-    return;
-  }
+    base::WriteLockGuard<AtomicRWLock> lock(rw_lock_);
+    if (signals_conns_.find(oppo_id) == signals_conns_.end()) {
+        return;
+    }
 
-  if (signals_conns_[oppo_id].find(self_id) == signals_conns_[oppo_id].end()) {
-    return;
-  }
+    if (signals_conns_[oppo_id].find(self_id) == signals_conns_[oppo_id].end()) {
+        return;
+    }
 
-  signals_conns_[oppo_id][self_id].disconnect();
-  signals_conns_[oppo_id].erase(self_id);
+    signals_conns_[oppo_id][self_id].disconnect();
+    signals_conns_[oppo_id].erase(self_id);
 
 
 }
 
 
 template <typename MessageT>
-void ListenerHandler<MessageT>::Run(const Message& msg,
+void ListenerHandler<MessageT>::run(const Message& msg,
                                     const MessageInfo& msg_info) {
     //执行回调                                 
     signal_(msg, msg_info);
     //
-    uint64_t oppo_id = msg_info.sender_id().HashValue();    
-    ReadLockGuard<AtomicRWLock> lock(rw_lock_);   
+    uint64_t oppo_id = msg_info.sender_id().hash_value();    
+    base::ReadLockGuard<AtomicRWLock> lock(rw_lock_);   
     if (signals_.find(oppo_id) == signals_.end()) {
         return;
     }  
@@ -156,15 +160,15 @@ void ListenerHandler<MessageT>::Run(const Message& msg,
 }
 
 template <typename MessageT>
-void ListenerHandler<MessageT>::RunFromString(const std::string& str,
+void ListenerHandler<MessageT>::run_from_string(const std::string& str,
                                               const MessageInfo& msg_info) {
   // auto msg = std::make_shared<MessageT>();
   // serialize::DataStream ds(str);
   // ds >> *msg;
 
-  // Run(msg,msg_info);
+  // run(msg,msg_info);
 
-  AERROR << "RunFromString Error";
+  AERROR << "run_from_string Error";
 
 }
 
