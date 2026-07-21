@@ -7,7 +7,7 @@
  * @brief 提供基于比较能力检测的 FOR_EACH 遍历宏。
  */
 
-#include "macros.hpp"
+#include "func_trait.hpp"
 #include <type_traits>
 DEFINE_TYPE_TRAIT(HasLess, operator<)
 

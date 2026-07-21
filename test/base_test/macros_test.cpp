@@ -1,4 +1,4 @@
-#include "macros.hpp"
+#include "func_trait.hpp"
 
 #include <gtest/gtest.h>
 

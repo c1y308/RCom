@@ -66,7 +66,7 @@ class Signal {
   Signal() {}
   virtual ~Signal() { disconnect_all_slots(); }
 
-  //重载()操作符，调用时会调用关联槽的回调函数
+  //重载()操作符（相当于给槽的回调函数传入具体参数了！），调用时会调用关联槽的回调函数
   void operator()(Types... args) {
     SlotList local;  // 指针链表（指针为 std::shared_ptr<Slot<Types...>>，Slot 为槽类，内部有对应的回调函数）
     {
@@ -101,7 +101,7 @@ class Signal {
     {
       std::lock_guard<std::mutex> lock(mutex_);
       for (auto& slot : slots_) {
-        if (conn.has_slot(slot)) {
+        if (conn.matches_slot(slot)) {
           find = true;
           slot->disconnect();
         }
@@ -166,7 +166,7 @@ class Connection {
     return *this;
   }
 
-  bool has_slot(const SlotPtr& slot) const {
+  bool matches_slot(const SlotPtr& slot) const {
     if (slot != nullptr && slot_ != nullptr) {
       return slot_.get() == slot.get();
     }

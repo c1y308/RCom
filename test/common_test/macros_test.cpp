@@ -1,4 +1,4 @@
-#include "macros.hpp"
+#include "declare_singleton.hpp"
 
 #include <gtest/gtest.h>
 

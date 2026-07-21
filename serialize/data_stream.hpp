@@ -198,6 +198,283 @@ private:
     ByteOrder byteorder_;
 };
 
+/* vector 容器的写入实现 */
+template <typename T>
+void DataStream::write(const std::vector<T> & value)
+{
+    /* 首先写入类型(char) */
+    char type = DataType::VECTOR;
+    write((char *)&type, sizeof(char));
+
+    /* 然后写入长度(int) */
+    int len = value.size();
+    write(len);
+
+    /* 转换为char类型写入数据 */
+    const T* ptr = value.data();
+    const char* char_ptr = reinterpret_cast<const char*>(ptr);
+    write(char_ptr, value.size());
+}
+
+
+/* list 容器的写入实现 */
+template <typename T>
+void DataStream::write(const std::list<T> & value)
+{
+    /* 首先写入类型(char) */
+    char type = DataType::LIST;
+    write((char *)&type, sizeof(char));
+
+    /* 然后写入长度(int) */
+    int len = value.size();
+    write(len);
+
+    /* 遍历list中的每个元素并写入 */
+    for (auto it = value.begin(); it != value.end(); it++)
+    {
+        write((*it));
+    }
+}
+
+
+/* map 容器的写入实现 */
+template <typename K, typename D>
+void DataStream::write(const std::map<K, D> & value)
+{
+    /* 首先写入类型(char) */
+    char type = DataType::MAP;
+    write((char *)&type, sizeof(char));
+
+    /* 然后写入长度(int) */
+    int len = value.size();
+    write(len);
+
+    /* 最后遍历写入 key 和 data */
+    for (auto it = value.begin(); it != value.end(); it++)
+    {
+        write(it->first);
+        write(it->second);
+    }
+}
+
+/* set 容器的写入实现 */
+template <typename T>
+void DataStream::write(const std::set<T> & value)
+{
+    /* 首先写入类型(char) */
+    char type = DataType::SET;
+    write((char *)&type, sizeof(char));
+
+    /* 然后写入长度(int) */
+    int len = value.size();
+    write(len);
+
+    /* 最后遍历写入 set 中的每个元素 */
+    for (auto it = value.begin(); it != value.end(); it++)
+    {
+        write(*it);
+    }
+}
+
+/* 枚举类型的写入 */
+template <typename T, typename dummy>
+void DataStream::write(const T& value){
+    /* 将其转换为 int32_t 类型写入 */
+    write(static_cast<int32_t>(value));
+}
+
+/* 使用递归手法来写入 variadic arguments */
+template <typename T, typename... Args>
+void DataStream::write_args(const T& head, const Args&... args) {
+    write(head);
+    write_args(args...);
+}
+
+/* 读取指针永远停留在下一个待读取数据的类型位置 */
+
+/* vector 容器的读取 */
+template <typename T>
+bool DataStream::read(std::vector<T> & value)
+{
+    value.clear();
+    /* 读取数据类型是否符合 */
+    if (buf_[pos_] != DataType::VECTOR)
+    {
+        return false;
+    }
+
+    /* 读取此次需要读取数据的长度 */
+    ++pos_;
+    int len;
+    read(len);
+
+    /* 本质调用 read(char*, int)函数进行读取 */
+    value.resize(len);
+    T* ptr = value.data();
+    char* char_ptr = reinterpret_cast<char*>(ptr);
+    read(char_ptr, len);
+    return true;
+}
+
+/* list 容器的读取 */
+template <typename T>
+bool DataStream::read(std::list<T> & value)
+{
+    value.clear();
+    /* 读取数据类型是否符合 */
+    if (buf_[pos_] != DataType::LIST)
+    {
+        return false;
+    }
+
+    /* 读取此次需要读取数据的长度 */
+    ++pos_;
+    int len;
+    read(len);
+
+    /* 本质调用 read(T )函数进行读取 */
+    for (int i = 0; i < len; i++)
+    {
+        T v;
+        read(v);
+        value.push_back(v);
+    }
+    return true;
+}
+
+
+template <typename K, typename D>
+bool DataStream::read(std::map<K, D> & value)
+{
+    value.clear();
+    /* 读取数据类型是否符合 */
+    if (buf_[pos_] != DataType::MAP)
+    {
+        return false;
+    }
+
+    /* 读取此次需要读取数据的长度 */
+    ++pos_;
+    int len;
+    read(len);
+
+    /* 本质调用 read(T )函数进行读取 */
+    for (int i = 0; i < len; i++)
+    {
+        K k;
+        read(k);
+
+        D v;
+        read(v);
+        value[k] = v;
+    }
+    return true;
+}
+
+
+template <typename T>
+bool DataStream::read(std::set<T> & value)
+{
+    /* 读取数据类型是否符合 */
+    value.clear();
+    if (buf_[pos_] != DataType::SET)
+    {
+        return false;
+    }
+
+    /* 读取此次需要读取数据的长度 */
+    ++pos_;
+    int len;
+    read(len);
+
+    /* 本质调用 read(T )函数进行读取 */
+    for (int i = 0; i < len; i++)
+    {
+        T v;
+        read(v);
+        value.insert(v);
+    }
+    return true;
+}
+
+/* 针对 enum 数据类型将其转换为 int32_t进行读取 */
+template <typename T, typename dummy>
+bool DataStream::read(T& value)
+{
+    int32_t& intValue = reinterpret_cast<int32_t&>(value);
+    return read(intValue);
+}
+
+/* 使用递归手法来读取 variadic arguments */
+template <typename T, typename ...Args>
+bool DataStream::read_args(T & head, Args&... args)
+{
+    read(head);
+    return read_args(args...);
+}
+
+template <typename T>
+DataStream& DataStream::operator<<(const std::vector<T>& value) {
+    write(value);
+    return *this;
+}
+
+template <typename T>
+DataStream& DataStream::operator<<(const std::list<T>& value) {
+    write(value);
+    return *this;
+}
+
+template <typename K, typename D>
+DataStream& DataStream::operator<<(const std::map<K, D>& value) {
+    write(value);
+    return *this;
+}
+
+template <typename T>
+DataStream& DataStream::operator<<(const std::set<T>& value) {
+    write(value);
+    return *this;
+}
+
+template <typename T>
+typename std::enable_if<std::is_enum<T>::value, DataStream&>::type
+DataStream::operator<<(const T& value) {
+    write(value);
+    return *this;
+}
+
+template <typename T>
+DataStream& DataStream::operator>>(std::vector<T>& value) {
+    read(value);
+    return *this;
+}
+
+template <typename T>
+DataStream& DataStream::operator>>(std::list<T>& value) {
+    read(value);
+    return *this;
+}
+
+template <typename K, typename D>
+DataStream& DataStream::operator>>(std::map<K, D>& value) {
+    read(value);
+    return *this;
+}
+
+template <typename T>
+DataStream& DataStream::operator>>(std::set<T>& value) {
+    read(value);
+    return *this;
+}
+
+template <typename T>
+typename std::enable_if<std::is_enum<T>::value, DataStream&>::type
+DataStream::operator>>(T& value) {
+    read(value);
+    return *this;
+}
+
 }  // namespace serialize
 
 #endif  // SERIALIZE_DATA_STREAM_HPP

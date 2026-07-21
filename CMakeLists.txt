@@ -19,7 +19,7 @@ endif()
 # 可选的运行时检查工具，默认关闭，需要时通过 -DENABLE_ASAN=ON 打开。
 option(ENABLE_ASAN "Enable AddressSanitizer" OFF)
 option(ENABLE_TSAN "Enable ThreadSanitizer" OFF)
-option(BUILD_GTESTS "Build GoogleTest test programs" OFF)
+option(BUILD_GTESTS "Build GoogleTest test programs" ON)
 
 find_package(nlohmann_json REQUIRED)
 
