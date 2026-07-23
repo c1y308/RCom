@@ -27,12 +27,12 @@ class Connection;
 template <typename... Types>
 class Slot {
  public:
-  using Callback = std::function<void(Types...)>;  // 回调函数为 void (Types...) 类型的函数
+  using callback = std::function<void(Types...)>;  // 回调函数为 void (Types...) 类型的函数
 
   Slot(const Slot& another)
       : cb_(another.cb_), connected_(another.connected_) {}
 
-  explicit Slot(const Callback& cb, bool connected = true)
+  explicit Slot(const callback& cb, bool connected = true)
       : cb_(cb), connected_(connected) {}
 
   virtual ~Slot() {}
@@ -47,28 +47,28 @@ class Slot {
   bool is_connected() const { return connected_; }
 
  private:
-  Callback cb_;
+  callback cb_;
   bool connected_ = true;
 };
 
 
 /*信号（被观察者）
-  SlotList成员变量：一个链表记录关联在该信号下的所有槽
+  slot_list 成员变量：一个链表记录关联在该信号下的所有槽
 */
-template <typename... Types>  // 模板参数为回调函数的参数类型
+template <typename... Types>  // 模板参数为回调函数的参数类型(也就是说信号创建时的模板参数类型就是在确定回调函数的参数类型)
 class Signal {
  public:
-  using Callback  = std::function<void(Types...)>;
-  using SlotPtr   = std::shared_ptr<Slot<Types...>>;
-  using SlotList  = std::list<SlotPtr>;
-  using ConnectionType = Connection<Types...>;
+  using callback = std::function<void(Types...)>;
+  using slot_ptr = std::shared_ptr<Slot<Types...>>;
+  using slot_list = std::list<slot_ptr>;
+  using connection_type = Connection<Types...>;
 
   Signal() {}
   virtual ~Signal() { disconnect_all_slots(); }
 
   //重载()操作符（相当于给槽的回调函数传入具体参数了！），调用时会调用关联槽的回调函数
   void operator()(Types... args) {
-    SlotList local;  // 指针链表（指针为 std::shared_ptr<Slot<Types...>>，Slot 为槽类，内部有对应的回调函数）
+    slot_list local;  // 指针链表（指针为 std::shared_ptr<Slot<Types...>>，Slot 为槽类，内部有对应的回调函数）
     {
       std::lock_guard<std::mutex> lock(mutex_);
       for (auto& slot : slots_) {
@@ -84,19 +84,19 @@ class Signal {
     clear_disconnected_slots();
   }
 
-  //为某个回调函数创建一个 Slot 共享指针，然后加入到自己的槽列表并返回一个 Connection 关联实例
-  ConnectionType connect(const Callback& cb) {
+  //为传入的回调函数的创建一个 Slot 共享指针，然后加入到信号的槽列表并返回一个 Connection 关联实例
+  connection_type connect(const callback& cb) {
     auto slot = std::make_shared<Slot<Types...>>(cb);
     {
       std::lock_guard<std::mutex> lock(mutex_);
       slots_.emplace_back(slot);
     }
 
-    return ConnectionType(slot, this);
+    return connection_type(slot, this);
   }
 
   //接收一个 connection 参数，从槽列表中找到该槽，然后将槽的标记置为 false 并从列表中删除。
-  bool disconnect(const ConnectionType& conn) {
+  bool disconnect(const connection_type& conn) {
     bool find = false;
     {
       std::lock_guard<std::mutex> lock(mutex_);
@@ -130,11 +130,11 @@ class Signal {
     std::lock_guard<std::mutex> lock(mutex_);
     slots_.erase(
         std::remove_if(slots_.begin(), slots_.end(),
-                       [](const SlotPtr& slot) { return !slot->is_connected(); }),
+                       [](const slot_ptr& slot) { return !slot->is_connected(); }),
         slots_.end());
   }
 
-  SlotList slots_;
+  slot_list slots_;
   std::mutex mutex_;
 };
 
@@ -147,11 +147,11 @@ class Signal {
 template <typename... Types>
 class Connection {
  public:
-  using SlotPtr = std::shared_ptr<Slot<Types...>>;
-  using SignalPtr = Signal<Types...>*;
+  using slot_ptr = std::shared_ptr<Slot<Types...>>;
+  using signal_ptr = Signal<Types...>*;
 
   Connection() : slot_(nullptr), signal_(nullptr) {}
-  Connection(const SlotPtr& slot, const SignalPtr& signal)
+  Connection(const slot_ptr& slot, const signal_ptr& signal)
       : slot_(slot), signal_(signal) {}
   virtual ~Connection() {
     slot_ = nullptr;
@@ -166,7 +166,7 @@ class Connection {
     return *this;
   }
 
-  bool matches_slot(const SlotPtr& slot) const {
+  bool matches_slot(const slot_ptr& slot) const {
     if (slot != nullptr && slot_ != nullptr) {
       return slot_.get() == slot.get();
     }
@@ -188,8 +188,8 @@ class Connection {
   }
 
  private:
-  SlotPtr slot_;
-  SignalPtr signal_;
+  slot_ptr slot_;
+  signal_ptr signal_;
 };
 
 

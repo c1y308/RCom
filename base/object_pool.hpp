@@ -22,12 +22,12 @@ namespace base{
 template<typename T>
 class ObjectPool : public std::enable_shared_from_this<ObjectPool<T>> {
 public:
-    using InitFunc = std::function<void(T *)>;
+    using init_func_type = std::function<void(T *)>;
 
     explicit ObjectPool(uint32_t num_objects);
 
     template<typename... Args>
-    explicit ObjectPool(uint32_t num_objects, InitFunc init_func, Args&&... args);
+    explicit ObjectPool(uint32_t num_objects, init_func_type init_func, Args&&... args);
 
     ~ObjectPool();
 
@@ -98,10 +98,10 @@ ObjectPool<T>::ObjectPool(uint32_t num_objects) : objects_num_(num_objects) {
     }
 }
 
-/* 构造函数（带 InitFunc，为每个对象额外调用 init_func） */
+/* 构造函数（带 init_func_type，为每个对象额外调用 init_func） */
 template<typename T>
 template<typename... Args>
-ObjectPool<T>::ObjectPool(uint32_t num_objects, InitFunc init_func, Args&&... args)
+ObjectPool<T>::ObjectPool(uint32_t num_objects, init_func_type init_func, Args&&... args)
     : objects_num_(num_objects) {
     const size_t object_size = sizeof(Node);
     if (objects_num_ == 0) {

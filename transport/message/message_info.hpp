@@ -6,7 +6,7 @@
 namespace transport{
 
 /**
- * @brief  MessageInfo 是除开要发送的数据外的额外信息，可以理解为一帧数据的标识
+ * @brief  MessageInfo 是除开要发送的数据外的额外信息，可以理解为一帧数据的帧头
  */
 class MessageInfo {
 

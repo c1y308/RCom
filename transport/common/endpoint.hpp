@@ -9,7 +9,7 @@
 namespace transport {
 
 class Endpoint;
-using EndpointPtr = std::shared_ptr<Endpoint>;
+using endpoint_ptr = std::shared_ptr<Endpoint>;
 
 class Endpoint
 {
