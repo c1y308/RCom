@@ -1,7 +1,7 @@
 add_library(RCom_transport SHARED
     common/endpoint.cpp
     common/identity.cpp
-
+    dispatcher/dispatcher.cpp
     message/message_info.cpp
 )
 
@@ -9,6 +9,7 @@ target_include_directories(RCom_transport PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/common
     ${CMAKE_CURRENT_SOURCE_DIR}/message
+    ${CMAKE_CURRENT_SOURCE_DIR}/dispatcher
 )
 
 target_link_libraries(RCom_transport

@@ -19,6 +19,8 @@ using base::AtomicRWLock;
  */
 
 /* 提供一个基类，方便使用一个基类指针指向各种子类 */
+class ListenerHandlerBase;
+using listener_handler_base_ptr = std::shared_ptr<ListenerHandlerBase>;
 class ListenerHandlerBase{
 public:
     ListenerHandlerBase() {}

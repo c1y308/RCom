@@ -32,12 +32,12 @@ public:
     //注册channel，返回 channel 的 id
     static uint64_t register_channel(const std::string& channel);
 
-    std::string get_channel_by_id(uint64_t id);
+    static std::string get_channel_by_id(uint64_t id);
 
     //注册node，返回 node 的 id
     static uint64_t register_node(const std::string& node_name);
 
-    std::string get_task_name_by_id(uint64_t id);
+    static std::string get_task_name_by_id(uint64_t id);
 
     uint64_t register_task_name(const std::string& task_name);
 private:
