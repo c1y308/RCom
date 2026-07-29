@@ -17,7 +17,7 @@ struct RoleAttributes : public Serializable
     int32_t process_id;          //进程ID
 
     std::string channel_name;    // channel name
-    uint64_t channel_id;         // hash value of channel_name
+    uint64_t    channel_id;      // hash value of channel_name
 
     config::QosProfile qos_profile;      //Qos配置策略
     uint64_t id;                 //

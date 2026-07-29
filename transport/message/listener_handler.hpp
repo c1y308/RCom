@@ -38,7 +38,7 @@ protected:
 template <typename MessageT>
 class ListenerHandler : public ListenerHandlerBase{
 public:
-    using message_ptr = std::shared_ptr<MessageT>;  //一个MessageT的指针
+    using message_ptr = std::shared_ptr<MessageT>;  //指向消息(回调函数的参数)的智能指针
 
     using message_signal = base::Signal<const message_ptr&, const MessageInfo&>;
 
